@@ -14,6 +14,7 @@ import { Config } from './config';
 import { commonFlags, deprecatedFlags } from './constants/command.constants';
 import { parseDataFiles, prepareEnvironment } from './libs/data';
 import { getDirname, transformEnvironmentName } from './libs/utils';
+import fileUpload, { UploadedFile } from 'express-fileupload';
 dotenv.config();
 
 interface ServerParameters {
@@ -31,9 +32,29 @@ class Application {
     public runApplication = async () => {
         this.mockoonServer = await this.runMockoon("./resources/mock1.json");
         console.log("Run Mockoon finished")
+        this.app.use(fileUpload({
+            // limit 50 Mb
+            limits: { fileSize: 50 * 1024 * 1024 },
+          }))
         this.app.get('/', async (req: Request, res: Response) => {
             res.status(200)
             res.send('Express + TypeScript Server');
+        });
+        this.app.post('/upload', function(req, res) {
+            let file;
+            let uploadPath;
+          
+            if (!req.files || Object.keys(req.files).length === 0) {
+              return res.status(400).send('No files were uploaded.');
+            }
+            file = req.files.file as UploadedFile
+            uploadPath = './resources/' + file.name;
+            // Use the mv() method to place the file somewhere on your server
+            file.mv(uploadPath, function(err) {
+              if (err)
+                return res.status(500).send(err);
+              res.send('File uploaded!');
+            });
         });
         this.app.patch("/env/:envName", async (req: Request, res: Response) => {
             let newEnvName = req.params["envName"]
